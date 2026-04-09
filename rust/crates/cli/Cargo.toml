@@ -1,0 +1,17 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "data_lab"
+path = "src/main.rs"
+
+[dependencies]
+data_lab_core = { path = "../data_lab_core" }
+connectors = { path = "../connectors" }
+tokio.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

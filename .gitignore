@@ -1,0 +1,33 @@
+# ── Rust ──────────────────────────────────────────────────
+/rust/target/
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── AWS / Lambda packaging ────────────────────────────────
+python/lambdas/**/function.zip
+python/lambdas/**/package/
+
+# ── Secrets / env ─────────────────────────────────────────
+.env
+*.env.local
+
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────────
+.idea/
+*.iml
