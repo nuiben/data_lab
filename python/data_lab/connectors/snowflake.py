@@ -8,8 +8,8 @@ are not mature enough yet.
 from __future__ import annotations
 
 import os
-from contextlib import contextmanager
 from collections.abc import Generator
+from contextlib import contextmanager
 
 import snowflake.connector
 import structlog
