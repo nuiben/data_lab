@@ -7,7 +7,8 @@ so the rest of the codebase doesn't scatter client construction logic.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import boto3
 import structlog
