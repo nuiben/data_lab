@@ -10,7 +10,7 @@ pub struct S3Connector {
 
 impl S3Connector {
     pub async fn new(bucket: impl Into<String>) -> Result<Self> {
-        let config = aws_config::load_from_env().await;
+        let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
         let client = Client::new(&config);
         Ok(Self {
             client,
@@ -28,7 +28,7 @@ impl S3Connector {
             .send()
             .await?;
 
-        let refs = resp
+        let refs: Vec<S3ObjectRef> = resp
             .contents()
             .iter()
             .map(|obj| S3ObjectRef {
