@@ -7,15 +7,18 @@ so the rest of the codebase doesn't scatter client construction logic.
 from __future__ import annotations
 
 import os
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 import boto3
 import structlog
 
+if TYPE_CHECKING:
+    from mypy_boto3_s3 import S3Client
+
 log = structlog.get_logger(__name__)
 
 
-def get_client() -> boto3.client:
+def get_client() -> S3Client:
     """Return a boto3 S3 client, picking up credentials from the environment."""
     return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
