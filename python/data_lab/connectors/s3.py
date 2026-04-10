@@ -15,6 +15,7 @@ import structlog
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
+    from mypy_boto3_s3.type_defs import ObjectTypeDef
 
 log = structlog.get_logger(__name__)
 
@@ -24,7 +25,7 @@ def get_client() -> S3Client:
     return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 
-def list_objects(bucket: str, prefix: str = "") -> Iterator[dict]:
+def list_objects(bucket: str, prefix: str = "") -> Iterator[ObjectTypeDef]:
     """Yield object metadata dicts for every key under *prefix*."""
     client = get_client()
     paginator = client.get_paginator("list_objects_v2")
