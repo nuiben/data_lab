@@ -39,8 +39,9 @@ py-lint:
     cd python && uv run ruff check .
     cd python && uv run ruff format --check .
 
-# Auto-fix Python formatting
+# Auto-fix Python formatting and imports
 py-fmt:
+    cd python && uv run ruff check --fix .
     cd python && uv run ruff format .
 
 # Type-check Python
