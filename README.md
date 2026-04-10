@@ -8,10 +8,10 @@ and performance-oriented data work in Rust, with Python as the glue layer.
 ```
 data_lab/
 ├── rust/          # Cargo workspace — core types, S3 connector, CLI binary
-├── python/        # uv-managed package — connectors, Lambda handlers, notebooks
-├── infra/         # Terraform — S3 bucket, Lambda + EventBridge schedule
+├── python/        # uv-managed package — connectors, Lambda handlers
+├── infra/         # AWS provisioning notes (infra tooling TBD — see infra/README.md)
 ├── data/          # Reference schemas (SQL) and seed data (CSV)
-└── docs/          # Architecture notes, runbooks
+└── .github/       # CI workflows
 ```
 
 ## Prerequisites
@@ -21,7 +21,7 @@ data_lab/
 | Rust        | `rustup`                                                   | Cargo workspace      |
 | uv          | `curl -LsSf https://astral.sh/uv/install.sh \| sh`        | Python env           |
 | just        | `cargo install just`                                       | Task runner          |
-| AWS CLI     | `brew install awscli`                                      | Local AWS auth       |
+| AWS CLI     | `pip install awscli` or your package manager               | Local AWS auth       |
 
 ## Quick Start
 
