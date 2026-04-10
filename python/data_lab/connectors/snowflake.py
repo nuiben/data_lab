@@ -18,7 +18,7 @@ from snowflake.connector import SnowflakeConnection
 log = structlog.get_logger(__name__)
 
 
-def _conn_params() -> dict:
+def _conn_params() -> dict[str, str]:
     return {
         "account": os.environ["SNOWFLAKE_ACCOUNT"],
         "user": os.environ["SNOWFLAKE_USER"],
@@ -42,7 +42,7 @@ def get_connection() -> Generator[SnowflakeConnection, None, None]:
         log.info("snowflake.disconnect")
 
 
-def execute_query(sql: str, params: tuple | None = None) -> list[dict]:
+def execute_query(sql: str, params: tuple[object, ...] | None = None) -> list[dict[str, object]]:
     """Execute *sql* and return results as a list of dicts."""
     with get_connection() as conn:
         cur = conn.cursor(snowflake.connector.DictCursor)
