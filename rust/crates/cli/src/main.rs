@@ -27,8 +27,8 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::S3List { prefix } => {
-            let bucket = std::env::var("DATA_LAB_S3_BUCKET")
-                .expect("DATA_LAB_S3_BUCKET must be set");
+            let bucket =
+                std::env::var("DATA_LAB_S3_BUCKET").expect("DATA_LAB_S3_BUCKET must be set");
             let connector = connectors::s3::S3Connector::new(bucket).await?;
             let objects = connector.list_objects(&prefix).await?;
             for obj in objects {
