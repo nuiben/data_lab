@@ -1,6 +1,8 @@
 # data_lab justfile
 # Run `just --list` to see all recipes.
 
+set dotenv-load
+
 # Default: list recipes
 default:
     @just --list
@@ -103,6 +105,56 @@ aws-lambda-invoke:
         --log-type Tail \
         /tmp/lambda_response.json && \
     cat /tmp/lambda_response.json
+
+# ── Seed data ─────────────────────────────────────────────
+
+# Generate and load fintech seed data into local Postgres
+seed n="200" s="42":
+    cd python && uv run python -m data_lab.seed --clients {{n}} --seed {{s}}
+
+# ── Export ────────────────────────────────────────────────
+
+# Export Postgres tables to Parquet and upload to S3
+export:
+    cd python && uv run python -m data_lab.export
+
+# Load Postgres tables into Snowflake (requires Snowflake credentials in .env)
+load-snowflake:
+    cd python && uv run python -m data_lab.load
+
+# Show Parquet files exported to S3 (requires AWS credentials)
+rust-export-status prefix="fintech/":
+    cd rust && cargo run -q --bin data_lab -- export-status --prefix {{prefix}}
+
+# ── Database ──────────────────────────────────────────────
+
+# Start local Postgres + pgAdmin
+db-up:
+    docker compose up -d
+
+# Stop local Postgres + pgAdmin (data volume preserved)
+db-down:
+    docker compose down
+
+# Destroy containers and data volume, then restart fresh
+db-reset:
+    docker compose down -v
+    docker compose up -d
+
+# Open a psql shell in the running Postgres container
+db-psql:
+    docker compose exec postgres psql -U "${POSTGRES_USER:-data_lab}" -d "${POSTGRES_DB:-data_lab}"
+
+# Re-apply schema files against the running Postgres container
+db-migrate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for f in $(ls data/schemas/postgres/*.sql | sort); do
+        echo "Applying $f..."
+        docker compose exec -T postgres psql \
+            -U "${POSTGRES_USER:-data_lab}" \
+            -d "${POSTGRES_DB:-data_lab}" < "$f"
+    done
 
 # ── Utilities ─────────────────────────────────────────────
 

@@ -1,0 +1,79 @@
+-- Embedded Business Risk Financing Platform — Snowflake schema
+-- Run against DATA_LAB database, PUBLIC schema.
+-- UUIDs are supplied by Python; no server-side default needed.
+-- FK declarations are informational only — Snowflake does not enforce them.
+
+-- ── Dimensions ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS DIM_PRODUCTS (
+    PRODUCT_ID  VARCHAR(8)    NOT NULL PRIMARY KEY,
+    NAME        VARCHAR(64)   NOT NULL,
+    DESCRIPTION VARCHAR(512)  NOT NULL,
+    CREATED_AT  TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS DIM_CLIENTS (
+    CLIENT_ID    VARCHAR(36)   NOT NULL PRIMARY KEY,
+    COMPANY_NAME VARCHAR(128)  NOT NULL,
+    EIN          VARCHAR(10),
+    SIC_CODE     VARCHAR(4),
+    INDUSTRY     VARCHAR(64),
+    SIZE_BAND    VARCHAR(16)   NOT NULL,
+    STATE_ABBR   CHAR(2)       NOT NULL,
+    CREATED_AT   TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- ── Facts ─────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS FACT_COC_SIGNALS (
+    SIGNAL_ID                   VARCHAR(36)   NOT NULL PRIMARY KEY,
+    CLIENT_ID                   VARCHAR(36)   NOT NULL,
+    OPPORTUNITY_DATE            DATE          NOT NULL,
+    CASH_FLOW_CONCENTRATION_PCT NUMBER(5,4)   NOT NULL,
+    CUSTOMER_CONCENTRATION_PCT  NUMBER(5,4)   NOT NULL,
+    INDUSTRY_VOLATILITY_INDEX   NUMBER(4,2)   NOT NULL,
+    LEVERAGE_RATIO              NUMBER(5,2)   NOT NULL,
+    OWNER_SUCCESSION_RISK       BOOLEAN       NOT NULL,
+    REGULATORY_EXPOSURE_SCORE   NUMBER(4,3)   NOT NULL,
+    COC_SCORE                   NUMBER(8,4)   NOT NULL,
+    RISK_CLASS                  VARCHAR(16)   NOT NULL,
+    OPPORTUNITY_STATUS          VARCHAR(16)   NOT NULL,
+    CREATED_AT                  TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS FACT_QUOTES (
+    QUOTE_ID               VARCHAR(36)   NOT NULL PRIMARY KEY,
+    SIGNAL_ID              VARCHAR(36)   NOT NULL,
+    CLIENT_ID              VARCHAR(36)   NOT NULL,
+    PRODUCT_ID             VARCHAR(8)    NOT NULL,
+    QUOTE_DATE             DATE          NOT NULL,
+    SEATS                  INTEGER       NOT NULL,
+    ANNUAL_CONTRACT_VALUE  NUMBER(12,2)  NOT NULL,
+    STATUS                 VARCHAR(16)   NOT NULL,
+    EXPIRES_AT             DATE          NOT NULL,
+    CREATED_AT             TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS FACT_SOLD_POLICIES (
+    POLICY_ID              VARCHAR(36)   NOT NULL PRIMARY KEY,
+    QUOTE_ID               VARCHAR(36)   NOT NULL,
+    CLIENT_ID              VARCHAR(36)   NOT NULL,
+    PRODUCT_ID             VARCHAR(8)    NOT NULL,
+    EFFECTIVE_DATE         DATE          NOT NULL,
+    EXPIRATION_DATE        DATE          NOT NULL,
+    ANNUAL_CONTRACT_VALUE  NUMBER(12,2)  NOT NULL,
+    SEATS                  INTEGER       NOT NULL,
+    STATUS                 VARCHAR(16)   NOT NULL,
+    CREATED_AT             TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE IF NOT EXISTS FACT_RENEWALS (
+    RENEWAL_ID      VARCHAR(36)   NOT NULL PRIMARY KEY,
+    POLICY_ID       VARCHAR(36)   NOT NULL,
+    RENEWAL_DATE    DATE          NOT NULL,
+    PRIOR_ACV       NUMBER(12,2)  NOT NULL,
+    NEW_ACV         NUMBER(12,2),
+    RATE_CHANGE_PCT NUMBER(6,4),
+    STATUS          VARCHAR(16)   NOT NULL,
+    CREATED_AT      TIMESTAMP_LTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
