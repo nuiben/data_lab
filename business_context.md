@@ -199,6 +199,11 @@ These are the core data domains the Datalab project will model. Names and conven
 | **MCC override** | XMOB-internal MCC reassignment, maintained by FCC ops |
 | **Merchant** | A commercial entity accepting payments through XMOB |
 | **XMOB Connect** | API platform for embedded finance partners |
+| **IWS** | IBM Workload Scheduler — the job orchestration layer managing all Tivoli Job schedules and dependencies |
+| **Tivoli Job** | An individual unit of scheduled work within IWS (a shell script, Informatica workflow invocation, etc.) |
+| **Informatica / PowerCenter** | On-prem ETL platform; defines transform logic for older P&S and FCC pipelines |
+| **IDMC / IICS** | Informatica Intelligent Cloud Services — cloud ETL used for newer Snowflake-target and telematics loads |
+| **Job stream** | IWS term for a dependency-linked group of Tivoli Jobs that run as a unit |
 | **Model governance** | The framework for approving, monitoring, and retiring risk models |
 | **M-Score** | XMOB's proprietary risk score; v4 is current, v2 is grandfathered |
 | **NorthRail** | Acquired logistics analytics platform; powers telematics ingestion |
@@ -216,7 +221,55 @@ These are the core data domains the Datalab project will model. Names and conven
 
 ---
 
-## 8. How AI assistants should use this document
+## 8. ETL & Orchestration Infrastructure
+
+XMOB's existing data integration stack is a two-layer system that predates the Datalab initiative and remains the operational backbone for all cross-system data movement.
+
+### 8.1 IBM Workload Scheduler (IWS) — Job Orchestration
+
+The outer orchestration layer is **IBM Tivoli Workload Scheduler** (marketed as IBM Workload Scheduler / IWS), which manages a large catalog of Tivoli Jobs that define dependencies, schedules, and execution sequencing across data pipelines. IWS provides:
+
+- Calendar-based and event-triggered job scheduling
+- Job dependency chains (jobs A → B → C with failure/SLA alerting)
+- A centralized console for monitoring job streams across business lines
+- Restart/recovery logic for failed runs (often fragile in practice)
+
+In reality the job catalog has grown organically over ~10 years and is poorly documented. Many jobs have implicit dependencies that are not formally modeled in IWS — operators know them by tribal knowledge. On-call incidents frequently involve manually poking jobs in a specific undocumented order.
+
+**Key operational characteristics:**
+- P&S and FCC each have separate IWS job groups with different on-call owners
+- Schedules are largely batch-nightly; some T+0 feeds run intraday
+- The IWS console is the primary observability surface — there is no unified SLA dashboard
+
+### 8.2 Informatica — ETL Logic
+
+The inner ETL layer is **Informatica**, used to define the actual data transformation and movement logic that IWS jobs execute. XMOB uses a hybrid:
+
+- **Informatica PowerCenter** (on-prem): older pipelines originating from pre-2020 architecture; handles most P&S and legacy FCC feeds
+- **Informatica Cloud (IDMC/IICS)**: newer pipelines introduced post-2020; used for some Snowflake-target loads and the NorthRail telematics ingestion
+
+Informatica mappings and workflows are the canonical definition of "how data gets from source system to warehouse." However, they are:
+- Scattered across PowerCenter repositories and IICS organizations
+- Largely undocumented outside of the tool itself
+- Maintained by a small team (2–3 people) with significant key-person risk
+- Not version-controlled in any meaningful sense
+
+### 8.3 Datalab's Relationship to This Stack
+
+The Datalab initiative does not have a mandate to replace IWS or Informatica in the near term — both are deeply embedded and owned by separate teams. However, a stated goal is to build data pipelines that are:
+
+- **Auditable** (lineage, run history, schema evolution tracked in code)
+- **Reproducible** (same inputs → same outputs, deterministic transforms)
+- **Observable** (structured logging, SLA tracking, alerting without a console babysitter)
+- **Testable** (unit and integration tests on transform logic)
+
+A natural future direction for a substantial portion of this repo is a **lightweight replica of the IWS + Informatica system**: a modern re-expression of the same orchestration and ETL patterns using code-first tooling (e.g., scheduled Rust jobs, Python transforms, a DAG-based scheduler). This would serve as both a working alternative for Datalab-owned pipelines and a proof-of-concept for migrating away from the incumbent stack.
+
+**When building any pipeline component in this repo, treat the IWS + Informatica system as the reference model.** New pipelines should solve the same problems (dependency management, failure recovery, SLA tracking) but do so in a way that is visible, testable, and Git-native.
+
+---
+
+## 9. How AI assistants should use this document
 
 When generating code, schemas, requirements, or sample data in this repo:
 
