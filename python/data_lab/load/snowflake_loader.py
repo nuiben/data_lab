@@ -12,12 +12,12 @@ log = structlog.get_logger(__name__)
 
 # Map Postgres table names → Snowflake table names (uppercase convention).
 _TABLE_MAP = {
-    "dim_products":      "DIM_PRODUCTS",
-    "dim_clients":       "DIM_CLIENTS",
-    "fact_coc_signals":  "FACT_COC_SIGNALS",
-    "fact_quotes":       "FACT_QUOTES",
+    "dim_products": "DIM_PRODUCTS",
+    "dim_clients": "DIM_CLIENTS",
+    "fact_coc_signals": "FACT_COC_SIGNALS",
+    "fact_quotes": "FACT_QUOTES",
     "fact_sold_policies": "FACT_SOLD_POLICIES",
-    "fact_renewals":     "FACT_RENEWALS",
+    "fact_renewals": "FACT_RENEWALS",
 }
 
 

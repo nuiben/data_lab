@@ -27,10 +27,20 @@ def main() -> None:
     configure_logging()
 
     parser = argparse.ArgumentParser(description="Generate and load fintech seed data.")
-    parser.add_argument("--clients", type=int, default=200, metavar="N",
-                        help="Number of client companies to generate (default: 200)")
-    parser.add_argument("--seed", type=int, default=42, metavar="S",
-                        help="Random seed for reproducibility (default: 42)")
+    parser.add_argument(
+        "--clients",
+        type=int,
+        default=200,
+        metavar="N",
+        help="Number of client companies to generate (default: 200)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        metavar="S",
+        help="Random seed for reproducibility (default: 42)",
+    )
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -39,10 +49,10 @@ def main() -> None:
 
     log.info("seed.start", clients=args.clients, seed=args.seed)
 
-    clients  = generate_clients(args.clients, fake)
-    by_id    = {c["client_id"]: c for c in clients}
-    signals  = generate_coc_signals(clients)
-    quotes   = generate_quotes(signals, by_id)
+    clients = generate_clients(args.clients, fake)
+    by_id = {c["client_id"]: c for c in clients}
+    signals = generate_coc_signals(clients)
+    quotes = generate_quotes(signals, by_id)
     policies = generate_policies(quotes)
     renewals = generate_renewals(policies)
 

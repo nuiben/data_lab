@@ -158,6 +158,11 @@ db-migrate:
 
 # ── Utilities ─────────────────────────────────────────────
 
+# Wire up .githooks so git uses the committed hooks
+install-hooks:
+    git config core.hooksPath .githooks
+    @echo "Hooks installed."
+
 # Validate .env.example has no real secrets (basic check)
 check-env:
     @grep -E '(PASSWORD|SECRET|KEY)\s*=\s*.+' .env.example && echo "WARNING: .env.example may contain real secrets" || echo "env.example looks clean"

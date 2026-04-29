@@ -60,18 +60,14 @@ impl S3Connector {
     }
 
     /// Upload a local file to *key*. Content type is inferred from the extension.
-    pub async fn upload_file(
-        &self,
-        path: impl AsRef<std::path::Path>,
-        key: &str,
-    ) -> Result<()> {
+    pub async fn upload_file(&self, path: impl AsRef<std::path::Path>, key: &str) -> Result<()> {
         let path = path.as_ref();
         let data = tokio::fs::read(path).await?;
         let content_type = match path.extension().and_then(|e| e.to_str()) {
             Some("parquet") => "application/octet-stream",
-            Some("json")    => "application/json",
-            Some("csv")     => "text/csv",
-            _               => "application/octet-stream",
+            Some("json") => "application/json",
+            Some("csv") => "text/csv",
+            _ => "application/octet-stream",
         };
         self.upload_bytes(key, data, content_type).await
     }

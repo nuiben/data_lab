@@ -10,6 +10,7 @@ import structlog
 
 log = structlog.get_logger(__name__)
 
+
 # Fields prefixed with _ are internal pipeline metadata and not persisted.
 def _strip(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{k: v for k, v in row.items() if not k.startswith("_")} for row in rows]
@@ -33,9 +34,9 @@ def _insert(
     if not rows:
         return
     clean = _strip(rows)
-    cols  = list(clean[0].keys())
-    col_list  = ", ".join(cols)
-    val_list  = ", ".join(f"%({c})s" for c in cols)
+    cols = list(clean[0].keys())
+    col_list = ", ".join(cols)
+    val_list = ", ".join(f"%({c})s" for c in cols)
     query = f"INSERT INTO {table} ({col_list}) VALUES ({val_list})"  # noqa: S608
     with conn.cursor() as cur:
         cur.executemany(query, clean)
@@ -51,8 +52,8 @@ def load_all(
     renewals: list[dict[str, Any]],
 ) -> None:
     with conn.transaction():
-        _insert(conn, "dim_clients",       clients)
-        _insert(conn, "fact_coc_signals",  signals)
-        _insert(conn, "fact_quotes",       quotes)
+        _insert(conn, "dim_clients", clients)
+        _insert(conn, "fact_coc_signals", signals)
+        _insert(conn, "fact_quotes", quotes)
         _insert(conn, "fact_sold_policies", policies)
-        _insert(conn, "fact_renewals",     renewals)
+        _insert(conn, "fact_renewals", renewals)
