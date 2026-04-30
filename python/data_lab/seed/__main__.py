@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import random
+from typing import Any
 
 import structlog
 from dotenv import load_dotenv
@@ -79,7 +80,7 @@ def main() -> None:
     accounts_by_customer = {a["customer_id"]: a for a in accounts if a["customer_id"]}
 
     cards = generate_cards(fleet_customers, accounts_by_customer, fake)
-    cards_by_account: dict[str, list] = {}
+    cards_by_account: dict[str, list[dict[str, Any]]] = {}
     for c in cards:
         cards_by_account.setdefault(c["account_id"], []).append(c)
 

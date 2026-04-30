@@ -25,7 +25,7 @@ flowchart LR
     end
 
     subgraph local["Local"]
-        pg[("PostgreSQL\n6 tables")]
+        pg[("PostgreSQL\n10 tables")]
     end
 
     subgraph etl["ETL"]
