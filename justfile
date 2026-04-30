@@ -108,9 +108,9 @@ aws-lambda-invoke:
 
 # ── Seed data ─────────────────────────────────────────────
 
-# Generate and load fintech seed data into local Postgres
-seed n="200" s="42":
-    cd python && uv run python -m data_lab.seed --clients {{n}} --seed {{s}}
+# Generate and load XMOB seed data into local Postgres
+seed m="120" c="80" s="42":
+    cd python && uv run python -m data_lab.seed --merchants {{m}} --customers {{c}} --seed {{s}}
 
 # ── Export ────────────────────────────────────────────────
 

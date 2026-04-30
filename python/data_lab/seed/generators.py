@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from faker import Faker
@@ -12,274 +12,466 @@ from faker import Faker
 TODAY = date.today()
 _LOOKBACK_DAYS = 730
 
-_SIC_INDUSTRIES: list[tuple[str, str]] = [
-    ("2000", "Manufacturing"),
-    ("4200", "Logistics"),
-    ("5000", "Retail"),
-    ("5140", "Food & Beverage"),
-    ("6020", "Fintech"),
-    ("7000", "Healthcare"),
-    ("7372", "Software"),
-    ("8000", "Business Services"),
+# Must match 02_seeds.sql
+_MCC_CODES = [
+    "5541",
+    "5542",
+    "5172",
+    "4215",
+    "4231",
+    "5013",
+    "5561",
+    "5599",
+    "7538",
+    "5411",
+    "5812",
+    "5511",
+    "7514",
+    "7521",
+    "4111",
+    "4812",
+    "4911",
+    "5065",
+    "7372",
+    "5999",
+]
+_OVERRIDE_MCCS = {"5541", "5542", "5172"}  # known MCC drift candidates
+
+_ZIP_CODES = [
+    "28201",
+    "30301",
+    "37201",
+    "75201",
+    "77001",
+    "73101",
+    "80201",
+    "85001",
+    "89101",
+    "45201",
+    "53201",
+    "55401",
+    "64101",
+    "97201",
+    "98101",
 ]
 
-_PRODUCT_IDS = ["RCA", "BLF", "KPRC", "ODC", "DCR", "ECA", "TEC", "WTR"]
+_SEGMENT_CODES = ["TRK", "LOG", "FLS", "MFG", "RET", "FNB", "SVC", "TEC"]
 
-_CONVERSION_RATES: dict[str, float] = {
-    "RCA": 0.35,
-    "BLF": 0.35,
-    "KPRC": 0.28,
-    "ECA": 0.25,
-    "ODC": 0.22,
-    "DCR": 0.22,
-    "TEC": 0.18,
-    "WTR": 0.18,
-}
-
-_SEAT_COUNTS: dict[str, tuple[int, int]] = {
-    "Micro": (5, 25),
-    "SMB": (15, 100),
-    "Mid-Market": (100, 500),
-}
-
-_SEAT_RATE: dict[str, tuple[int, int]] = {
-    "Micro": (200, 500),
-    "SMB": (150, 400),
-    "Mid-Market": (100, 250),
-}
-
-_PRODUCT_RATE_MULT: dict[str, float] = {
-    "RCA": 1.0,
-    "BLF": 1.0,
-    "KPRC": 1.2,
-    "ECA": 1.2,
-    "ODC": 1.1,
-    "WTR": 1.1,
-    "TEC": 1.5,
-    "DCR": 1.5,
-}
-
-_RISK_MULT: dict[str, float] = {
-    "Preferred": 0.90,
-    "Standard": 1.00,
-    "Elevated": 1.15,
-    "Watch": 1.35,
-}
-
-_RETENTION_BY_CLASS: dict[str, float] = {
-    "Preferred": 0.88,
-    "Standard": 0.74,
-    "Elevated": 0.58,
-    "Watch": 0.38,
-}
-
-_COC_WEIGHTS = {
-    "cash_flow": 0.25,
-    "customer": 0.20,
-    "volatility": 0.20,
-    "leverage": 0.15,
-    "succession": 0.10,
-    "regulatory": 0.10,
-}
+_MODEL_IDS = ["MSCORE_V2", "MSCORE_V4"]
 
 
-def _clamp(v: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, v))
+def _rand_date(days_back_lo: int, days_back_hi: int) -> date:
+    return TODAY - timedelta(days=random.randint(days_back_lo, days_back_hi))
 
 
-def _coc_score(
-    cf_conc: float,
-    cust_conc: float,
-    volatility: float,
-    leverage: float,
-    succession: bool,
-    reg_score: float,
-) -> float:
-    return (
-        cf_conc * _COC_WEIGHTS["cash_flow"]
-        + cust_conc * _COC_WEIGHTS["customer"]
-        + (volatility / 10.0) * _COC_WEIGHTS["volatility"]
-        + _clamp(leverage / 8.0, 0.0, 1.0) * _COC_WEIGHTS["leverage"]
-        + (1.0 if succession else 0.0) * _COC_WEIGHTS["succession"]
-        + reg_score * _COC_WEIGHTS["regulatory"]
-    )
-
-
-def _risk_class(score: float) -> str:
-    if score < 0.30:
-        return "Preferred"
+def _score_to_band(score: float) -> str:
+    if score < 0.25:
+        return "Low"
     if score < 0.55:
-        return "Standard"
-    if score < 0.75:
-        return "Elevated"
-    return "Watch"
+        return "Moderate"
+    if score < 0.80:
+        return "High"
+    return "Critical"
 
 
-def generate_clients(n: int, fake: Faker) -> list[dict[str, Any]]:
-    size_bands: list[str] = random.choices(
-        ["Micro", "SMB", "Mid-Market"], weights=[0.40, 0.45, 0.15], k=n
-    )
-    clients: list[dict[str, Any]] = []
-    for size_band in size_bands:
-        sic_code, industry = random.choice(_SIC_INDUSTRIES)
-        clients.append(
+def _v2_or_v4() -> str:
+    return "MSCORE_V2" if random.random() < 0.08 else "MSCORE_V4"
+
+
+def generate_merchants(n: int, fake: Faker) -> list[dict[str, Any]]:
+    """PaymentCore + AcquireNet merchants. ~30% originate from AcquireNet."""
+    merchants = []
+    for _ in range(n):
+        source = random.choices(["PaymentCore", "AcquireNet"], weights=[0.70, 0.30])[0]
+        merchants.append(
             {
-                "client_id": str(uuid.uuid4()),
+                "merchant_id": str(uuid.uuid4()),
                 "company_name": fake.company(),
+                "dba_name": fake.company() if random.random() < 0.25 else None,
                 "ein": f"{random.randint(10, 99)}-{random.randint(1_000_000, 9_999_999)}",
-                "sic_code": sic_code,
-                "industry": industry,
-                "size_band": size_band,
-                "state_abbr": fake.state_abbr(),
+                "mcc": random.choice(_MCC_CODES),
+                "zip_code": random.choice(_ZIP_CODES),
+                "segment_code": random.choice(_SEGMENT_CODES),
+                "status": random.choices(
+                    ["Active", "Suspended", "Closed"], weights=[0.85, 0.08, 0.07]
+                )[0],
+                "onboarded_at": _rand_date(180, _LOOKBACK_DAYS),
+                "source_system": source,
             }
         )
-    return clients
+    return merchants
 
 
-def generate_coc_signals(clients: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    signals: list[dict[str, Any]] = []
-    for client in clients:
-        for _ in range(random.randint(1, 3)):
-            opp_date = TODAY - timedelta(days=random.randint(30, _LOOKBACK_DAYS))
-            cf_conc = round(_clamp(random.gauss(0.45, 0.15), 0.05, 0.95), 4)
-            cust_conc = round(_clamp(random.gauss(0.30, 0.20), 0.05, 0.95), 4)
-            volatility = round(random.uniform(1.0, 10.0), 2)
-            leverage = round(_clamp(random.gauss(2.5, 1.2), 0.1, 8.0), 2)
-            succession = random.random() < (0.30 if client["size_band"] != "Mid-Market" else 0.15)
-            reg_score = round(random.uniform(0.0, 1.0), 3)
-
-            score = round(
-                _coc_score(cf_conc, cust_conc, volatility, leverage, succession, reg_score), 4
-            )
-            signals.append(
-                {
-                    "signal_id": str(uuid.uuid4()),
-                    "client_id": client["client_id"],
-                    "opportunity_date": opp_date,
-                    "cash_flow_concentration_pct": cf_conc,
-                    "customer_concentration_pct": cust_conc,
-                    "industry_volatility_index": volatility,
-                    "leverage_ratio": leverage,
-                    "owner_succession_risk": succession,
-                    "regulatory_exposure_score": reg_score,
-                    "coc_score": score,
-                    "risk_class": _risk_class(score),
-                    "opportunity_status": random.choices(
-                        ["Closed-Won", "Closed-Lost", "Qualified", "Open"],
-                        weights=[0.28, 0.50, 0.12, 0.10],
-                    )[0],
-                }
-            )
-    return signals
-
-
-def generate_quotes(
-    signals: list[dict[str, Any]],
-    clients_by_id: dict[str, dict[str, Any]],
+def generate_fleet_customers(
+    n: int,
+    fake: Faker,
+    collision_merchants: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    quotes: list[dict[str, Any]] = []
-    for signal in signals:
-        if signal["opportunity_status"] not in ("Closed-Won", "Qualified"):
-            continue
-        client = clients_by_id[signal["client_id"]]
-        opp_date: date = signal["opportunity_date"]
-        quote_date = opp_date + timedelta(days=random.randint(1, 7))
-        expires_at = quote_date + timedelta(days=30)
+    """FleetOne fleet customers.
+    collision_merchants are merchants whose company_name is reused here with a
+    new UUID — simulating the ~12% customer ID collision documented in §6.3.
+    """
+    customers: list[dict[str, Any]] = []
+    for m in collision_merchants:
+        customers.append(
+            {
+                "customer_id": str(uuid.uuid4()),
+                "company_name": m["company_name"],
+                "dot_number": f"DOT{random.randint(100_000, 999_999)}",
+                "fleet_size": random.randint(5, 500),
+                "zip_code": random.choice(_ZIP_CODES),
+                "segment_code": m["segment_code"],
+                "status": random.choices(
+                    ["Active", "Suspended", "Closed"], weights=[0.88, 0.07, 0.05]
+                )[0],
+                "onboarded_at": _rand_date(180, _LOOKBACK_DAYS),
+            }
+        )
+    for _ in range(n - len(collision_merchants)):
+        customers.append(
+            {
+                "customer_id": str(uuid.uuid4()),
+                "company_name": fake.company(),
+                "dot_number": f"DOT{random.randint(100_000, 999_999)}"
+                if random.random() < 0.70
+                else None,
+                "fleet_size": random.randint(5, 2400),
+                "zip_code": random.choice(_ZIP_CODES),
+                "segment_code": random.choice(_SEGMENT_CODES),
+                "status": random.choices(
+                    ["Active", "Suspended", "Closed"], weights=[0.88, 0.07, 0.05]
+                )[0],
+                "onboarded_at": _rand_date(180, _LOOKBACK_DAYS),
+            }
+        )
+    return customers
 
-        products = random.sample(_PRODUCT_IDS, random.randint(1, 4))
-        for product_id in products:
-            seat_lo, seat_hi = _SEAT_COUNTS[client["size_band"]]
-            rate_lo, rate_hi = _SEAT_RATE[client["size_band"]]
-            seats = random.randint(seat_lo, seat_hi)
-            acv = round(
-                seats
-                * random.uniform(rate_lo, rate_hi)
-                * _PRODUCT_RATE_MULT[product_id]
-                * _RISK_MULT[signal["risk_class"]],
-                2,
-            )
-            status = (
-                "Quoted"
-                if expires_at >= TODAY
-                else random.choices(["Expired", "Declined"], weights=[0.7, 0.3])[0]
-            )
-            quotes.append(
+
+def generate_accounts(
+    merchants: list[dict[str, Any]],
+    fleet_customers: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """One account per merchant and per fleet customer."""
+    accounts: list[dict[str, Any]] = []
+    for m in merchants:
+        accounts.append(
+            {
+                "account_id": str(uuid.uuid4()),
+                "merchant_id": m["merchant_id"],
+                "customer_id": None,
+                "account_type": random.choices(
+                    ["Settlement", "Funding", "Reserve"], weights=[0.70, 0.20, 0.10]
+                )[0],
+                "routing_number": str(random.randint(100_000_000, 999_999_999)),
+                "status": "Active"
+                if m["status"] == "Active"
+                else random.choice(["Frozen", "Closed"]),
+                "opened_at": m["onboarded_at"],
+                "source_system": m["source_system"],
+            }
+        )
+    for c in fleet_customers:
+        accounts.append(
+            {
+                "account_id": str(uuid.uuid4()),
+                "merchant_id": None,
+                "customer_id": c["customer_id"],
+                "account_type": random.choices(
+                    ["Settlement", "Funding", "Reserve"], weights=[0.60, 0.30, 0.10]
+                )[0],
+                "routing_number": str(random.randint(100_000_000, 999_999_999)),
+                "status": "Active"
+                if c["status"] == "Active"
+                else random.choice(["Frozen", "Closed"]),
+                "opened_at": c["onboarded_at"],
+                "source_system": "FleetOne",
+            }
+        )
+    return accounts
+
+
+def generate_cards(
+    fleet_customers: list[dict[str, Any]],
+    accounts_by_customer: dict[str, dict[str, Any]],
+    fake: Faker,
+) -> list[dict[str, Any]]:
+    """2–20 cards per fleet customer depending on fleet size."""
+    cards: list[dict[str, Any]] = []
+    for c in fleet_customers:
+        acct = accounts_by_customer.get(c["customer_id"])
+        if acct is None:
+            continue
+        n_cards = random.randint(2, min(c["fleet_size"], 20))
+        for _ in range(n_cards):
+            cards.append(
                 {
-                    "quote_id": str(uuid.uuid4()),
-                    "signal_id": signal["signal_id"],
-                    "client_id": signal["client_id"],
-                    "product_id": product_id,
-                    "quote_date": quote_date,
-                    "seats": seats,
-                    "annual_contract_value": acv,
-                    "status": status,
-                    "expires_at": expires_at,
-                    # internal — used in generate_policies, not persisted
-                    "_risk_class": signal["risk_class"],
+                    "card_id": str(uuid.uuid4()),
+                    "customer_id": c["customer_id"],
+                    "account_id": acct["account_id"],
+                    "card_number_last4": f"{random.randint(1000, 9999)}",
+                    "card_type": random.choices(
+                        ["Fuel", "Fleet", "Expense"], weights=[0.60, 0.30, 0.10]
+                    )[0],
+                    "driver_name": fake.name() if random.random() < 0.80 else None,
+                    "vehicle_id": f"VIN{random.randint(10_000, 99_999)}"
+                    if random.random() < 0.70
+                    else None,
+                    "status": random.choices(
+                        ["Active", "Suspended", "Cancelled"], weights=[0.85, 0.10, 0.05]
+                    )[0],
+                    "issued_at": c["onboarded_at"] + timedelta(days=random.randint(0, 30)),
                 }
             )
-    return quotes
+    return cards
 
 
-def generate_policies(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    policies: list[dict[str, Any]] = []
-    for quote in quotes:
-        if random.random() >= _CONVERSION_RATES[quote["product_id"]]:
+def generate_txns(
+    accounts: list[dict[str, Any]],
+    cards_by_account: dict[str, list[dict[str, Any]]],
+    merchants_by_id: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Payment and card transactions across all three source systems.
+
+    Data quality injected:
+    - AcquireNet rows: transacted_at is Eastern time stored without a TZ offset
+      (appears UTC; is actually off by 4-5 hours).
+    - MCC drift: ~5% of transactions on override-flagged MCCs use a stale code.
+    """
+    txns: list[dict[str, Any]] = []
+    for acct in accounts:
+        if acct["status"] != "Active":
             continue
-        quote_date: date = quote["quote_date"]
-        effective = quote_date + timedelta(days=random.randint(1, 14))
-        expiration = effective + timedelta(days=365)
-        if expiration >= TODAY:
-            status = "Active"
-        else:
-            status = random.choices(["Lapsed", "Cancelled"], weights=[0.85, 0.15])[0]
-        policies.append(
+        source = acct["source_system"]
+        merchant_id = acct.get("merchant_id")
+        base_mcc = (
+            merchants_by_id[merchant_id]["mcc"]
+            if merchant_id and merchant_id in merchants_by_id
+            else None
+        )
+        acct_cards = cards_by_account.get(acct["account_id"], [])
+        active_cards = [c for c in acct_cards if c["status"] == "Active"]
+
+        for _ in range(random.randint(5, 50)):
+            tx_date = _rand_date(1, 180)
+            if source == "AcquireNet":
+                # Eastern time without TZ marker — stored as if UTC (data quality issue)
+                transacted_at = datetime(
+                    tx_date.year,
+                    tx_date.month,
+                    tx_date.day,
+                    random.randint(6, 22),
+                    random.randint(0, 59),
+                    tzinfo=UTC,
+                )
+            else:
+                transacted_at = datetime(
+                    tx_date.year,
+                    tx_date.month,
+                    tx_date.day,
+                    random.randint(0, 23),
+                    random.randint(0, 59),
+                    tzinfo=UTC,
+                )
+
+            if base_mcc and base_mcc in _OVERRIDE_MCCS and random.random() < 0.05:
+                mcc = random.choice(list(set(_MCC_CODES) - _OVERRIDE_MCCS))
+            else:
+                mcc = base_mcc or random.choice(_MCC_CODES)
+
+            card_id = (
+                random.choice(active_cards)["card_id"]
+                if active_cards and source == "FleetOne"
+                else None
+            )
+
+            if source == "FleetOne":
+                tx_type = "Purchase"
+                amount = round(random.uniform(50, 5_000), 2)
+            elif source == "AcquireNet":
+                tx_type = random.choices(["Purchase", "ACH", "Wire"], weights=[0.50, 0.40, 0.10])[0]
+                amount = round(random.uniform(500, 50_000), 2)
+            else:
+                tx_type = random.choices(["Purchase", "ACH", "Wire"], weights=[0.60, 0.30, 0.10])[0]
+                amount = round(random.uniform(500, 25_000), 2)
+
+            txns.append(
+                {
+                    "transaction_id": str(uuid.uuid4()),
+                    "account_id": acct["account_id"],
+                    "merchant_id": merchant_id,
+                    "card_id": card_id,
+                    "amount": amount,
+                    "mcc": mcc,
+                    "transaction_type": tx_type,
+                    "status": random.choices(
+                        ["Authorized", "Settled", "Declined", "Voided", "Disputed"],
+                        weights=[0.05, 0.82, 0.07, 0.03, 0.03],
+                    )[0],
+                    "transacted_at": transacted_at,
+                    "source_system": source,
+                }
+            )
+    return txns
+
+
+def generate_settlements(accounts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Batched fund movements.
+
+    Data quality injected:
+    - PaymentCore: settlement_date = batch_date + 1 (T+1 ACH).
+    - FleetOne:    settlement_date = batch_date + 2 (T+2 funding).
+    AcquireNet settles through PaymentCore and has no independent settlement rows.
+    """
+    settlements: list[dict[str, Any]] = []
+    for acct in accounts:
+        if acct["status"] != "Active" or acct["source_system"] == "AcquireNet":
+            continue
+        source = acct["source_system"]
+        lag = 1 if source == "PaymentCore" else 2
+        for _ in range(random.randint(3, 20)):
+            batch_date = _rand_date(2, 90)
+            gross = round(random.uniform(5_000, 500_000), 2)
+            fee = round(gross * random.uniform(0.005, 0.02), 2)
+            settlements.append(
+                {
+                    "settlement_id": str(uuid.uuid4()),
+                    "account_id": acct["account_id"],
+                    "batch_date": batch_date,
+                    "settlement_date": batch_date + timedelta(days=lag),
+                    "gross_amount": gross,
+                    "fee_amount": fee,
+                    "net_amount": round(gross - fee, 2),
+                    "transaction_count": random.randint(5, 200),
+                    "source_system": source,
+                }
+            )
+    return settlements
+
+
+def generate_underwriting_decisions(
+    merchants: list[dict[str, Any]],
+    fleet_customers: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Initial underwriting decision per entity.
+
+    Data quality injected:
+    - ~8% of decisions reference MSCORE_V2 (grandfathered accounts).
+    """
+    decisions: list[dict[str, Any]] = []
+
+    def _decision(
+        merchant_id: str | None,
+        customer_id: str | None,
+        onboarded_at: date,
+    ) -> dict[str, Any]:
+        score = round(random.betavariate(2, 5), 4)
+        outcome = "Approve" if score < 0.55 else "Refer" if score < 0.75 else "Decline"
+        return {
+            "decision_id": str(uuid.uuid4()),
+            "merchant_id": merchant_id,
+            "customer_id": customer_id,
+            "model_id": _v2_or_v4(),
+            "decision_date": onboarded_at + timedelta(days=random.randint(0, 3)),
+            "outcome": outcome,
+            "credit_limit": round(random.uniform(10_000, 500_000), 2)
+            if outcome == "Approve"
+            else None,
+            "score": score,
+        }
+
+    for m in merchants:
+        decisions.append(_decision(m["merchant_id"], None, m["onboarded_at"]))
+    for c in fleet_customers:
+        decisions.append(_decision(None, c["customer_id"], c["onboarded_at"]))
+    return decisions
+
+
+def generate_risk_scores(
+    merchants: list[dict[str, Any]],
+    fleet_customers: list[dict[str, Any]],
+    n_days: int = 7,
+) -> list[dict[str, Any]]:
+    """Daily M-Score refreshes for the last n_days for each active entity."""
+    scores: list[dict[str, Any]] = []
+
+    def _score_rows(key: str, entity_id: str) -> list[dict[str, Any]]:
+        model_id = _v2_or_v4()
+        base = round(random.betavariate(2, 5), 4)
+        rows = []
+        for offset in range(n_days):
+            s = round(min(1.0, max(0.0, base + random.gauss(0, 0.01))), 4)
+            rows.append(
+                {
+                    "score_id": str(uuid.uuid4()),
+                    "merchant_id": entity_id if key == "merchant_id" else None,
+                    "customer_id": entity_id if key == "customer_id" else None,
+                    "model_id": model_id,
+                    "score_date": TODAY - timedelta(days=offset),
+                    "score": s,
+                    "risk_band": _score_to_band(s),
+                }
+            )
+        return rows
+
+    for m in merchants:
+        if m["status"] == "Active":
+            scores.extend(_score_rows("merchant_id", m["merchant_id"]))
+    for c in fleet_customers:
+        if c["status"] == "Active":
+            scores.extend(_score_rows("customer_id", c["customer_id"]))
+    return scores
+
+
+def generate_disputes(txns: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """~3% of Settled transactions generate a dispute."""
+    disputes: list[dict[str, Any]] = []
+    for tx in txns:
+        if tx["status"] not in ("Settled", "Disputed"):
+            continue
+        if random.random() > 0.03:
+            continue
+        opened = tx["transacted_at"].date() + timedelta(days=random.randint(1, 30))
+        resolved = (
+            opened + timedelta(days=random.randint(10, 60)) if random.random() < 0.70 else None
+        )
+        disputes.append(
             {
-                "policy_id": str(uuid.uuid4()),
-                "quote_id": quote["quote_id"],
-                "client_id": quote["client_id"],
-                "product_id": quote["product_id"],
-                "effective_date": effective,
-                "expiration_date": expiration,
-                "annual_contract_value": quote["annual_contract_value"],
-                "seats": quote["seats"],
-                "status": status,
-                # internal — used in generate_renewals, not persisted
-                "_risk_class": quote["_risk_class"],
+                "dispute_id": str(uuid.uuid4()),
+                "transaction_id": tx["transaction_id"],
+                "dispute_type": random.choices(
+                    ["Chargeback", "Fraud", "Merchant"], weights=[0.50, 0.35, 0.15]
+                )[0],
+                "amount": tx["amount"],
+                "opened_at": opened,
+                "resolved_at": resolved,
+                "outcome": random.choice(["Won", "Lost", "Withdrawn"]) if resolved else None,
+                "source_system": tx["source_system"],
             }
         )
-    return policies
+    return disputes
 
 
-def generate_renewals(policies: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    renewals: list[dict[str, Any]] = []
-    for policy in policies:
-        expiration: date = policy["expiration_date"]
-        if expiration >= TODAY:
-            continue
-        risk_class: str = policy.get("_risk_class", "Standard")
-        retention_rate = _RETENTION_BY_CLASS.get(risk_class, 0.72)
-        retained = random.random() < retention_rate
-        rate_change = round(random.gauss(0.03, 0.04), 4)
-        prior_acv: float = policy["annual_contract_value"]
-
-        if retained:
-            new_acv = round(prior_acv * (1 + rate_change), 2)
-            status = "Retained" if abs(rate_change) < 0.02 else "Repriced"
-        else:
-            new_acv = None
-            rate_change = None  # type: ignore[assignment]
-            status = "Churned"
-
-        renewals.append(
+def generate_partners(n: int, fake: Faker) -> list[dict[str, Any]]:
+    """XMOB Connect external partners (FIs, platforms, embedded finance)."""
+    partners: list[dict[str, Any]] = []
+    for _ in range(n):
+        contract_start = _rand_date(365, _LOOKBACK_DAYS)
+        active = random.random() < 0.80
+        partners.append(
             {
-                "renewal_id": str(uuid.uuid4()),
-                "policy_id": policy["policy_id"],
-                "renewal_date": expiration + timedelta(days=random.randint(1, 15)),
-                "prior_acv": prior_acv,
-                "new_acv": new_acv,
-                "rate_change_pct": rate_change,
-                "status": status,
+                "partner_id": str(uuid.uuid4()),
+                "name": fake.company(),
+                "partner_type": random.choices(
+                    ["FI", "Platform", "Embedded"], weights=[0.55, 0.25, 0.20]
+                )[0],
+                "contract_start": contract_start,
+                "contract_end": None
+                if active
+                else contract_start + timedelta(days=random.randint(180, 730)),
+                "status": "Active"
+                if active
+                else random.choices(["Pending", "Terminated"], weights=[0.30, 0.70])[0],
+                "soc2_verified": random.random() < 0.65,
             }
         )
-    return renewals
+    return partners

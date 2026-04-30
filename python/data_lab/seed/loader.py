@@ -11,7 +11,6 @@ import structlog
 log = structlog.get_logger(__name__)
 
 
-# Fields prefixed with _ are internal pipeline metadata and not persisted.
 def _strip(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{k: v for k, v in row.items() if not k.startswith("_")} for row in rows]
 
@@ -45,15 +44,26 @@ def _insert(
 
 def load_all(
     conn: psycopg.Connection[Any],
-    clients: list[dict[str, Any]],
-    signals: list[dict[str, Any]],
-    quotes: list[dict[str, Any]],
-    policies: list[dict[str, Any]],
-    renewals: list[dict[str, Any]],
+    *,
+    merchants: list[dict[str, Any]],
+    fleet_customers: list[dict[str, Any]],
+    accounts: list[dict[str, Any]],
+    cards: list[dict[str, Any]],
+    txns: list[dict[str, Any]],
+    settlements: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+    risk_scores: list[dict[str, Any]],
+    disputes: list[dict[str, Any]],
+    partners: list[dict[str, Any]],
 ) -> None:
     with conn.transaction():
-        _insert(conn, "dim_clients", clients)
-        _insert(conn, "fact_coc_signals", signals)
-        _insert(conn, "fact_quotes", quotes)
-        _insert(conn, "fact_sold_policies", policies)
-        _insert(conn, "fact_renewals", renewals)
+        _insert(conn, "merchant", merchants)
+        _insert(conn, "fleet_customer", fleet_customers)
+        _insert(conn, "account", accounts)
+        _insert(conn, "card", cards)
+        _insert(conn, "txn", txns)
+        _insert(conn, "settlement", settlements)
+        _insert(conn, "underwriting_decision", decisions)
+        _insert(conn, "risk_score", risk_scores)
+        _insert(conn, "dispute", disputes)
+        _insert(conn, "partner", partners)

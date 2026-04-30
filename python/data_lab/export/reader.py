@@ -11,12 +11,16 @@ import structlog
 log = structlog.get_logger(__name__)
 
 TABLES = [
-    "dim_products",
-    "dim_clients",
-    "fact_coc_signals",
-    "fact_quotes",
-    "fact_sold_policies",
-    "fact_renewals",
+    "merchant",
+    "fleet_customer",
+    "account",
+    "card",
+    "txn",
+    "settlement",
+    "underwriting_decision",
+    "risk_score",
+    "dispute",
+    "partner",
 ]
 
 
