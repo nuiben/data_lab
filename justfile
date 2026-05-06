@@ -106,6 +106,111 @@ aws-lambda-invoke:
         /tmp/lambda_response.json && \
     cat /tmp/lambda_response.json
 
+# Package the export-step Lambda (bundles the data-lab package + handler)
+aws-lambda-export-package:
+    cd python && \
+        pip install . -t lambdas/export_step/package --quiet && \
+        cp lambdas/export_step/handler.py lambdas/export_step/package/ && \
+        cd lambdas/export_step/package && zip -r ../function.zip . -x "*.pyc" && \
+        cd .. && rm -rf package
+
+# Deploy (create or update) the export-step Lambda
+aws-lambda-export-deploy: aws-lambda-export-package
+    aws lambda create-function \
+        --function-name "data-lab-export-step" \
+        --runtime python3.12 \
+        --handler handler.handler \
+        --zip-file fileb://python/lambdas/export_step/function.zip \
+        --role "${LAMBDA_ROLE_ARN}" \
+        --environment "Variables={DATA_LAB_S3_BUCKET=$DATA_LAB_S3_BUCKET,POSTGRES_HOST=$POSTGRES_HOST,POSTGRES_PORT=$POSTGRES_PORT,POSTGRES_USER=$POSTGRES_USER,POSTGRES_PASSWORD=$POSTGRES_PASSWORD,POSTGRES_DB=$POSTGRES_DB,AWS_REGION=$AWS_REGION}" \
+        2>/dev/null || \
+    aws lambda update-function-code \
+        --function-name "data-lab-export-step" \
+        --zip-file fileb://python/lambdas/export_step/function.zip
+
+# Package the load-step Lambda (bundles the data-lab package + handler)
+aws-lambda-load-package:
+    cd python && \
+        pip install . -t lambdas/load_step/package --quiet && \
+        cp lambdas/load_step/handler.py lambdas/load_step/package/ && \
+        cd lambdas/load_step/package && zip -r ../function.zip . -x "*.pyc" && \
+        cd .. && rm -rf package
+
+# Deploy (create or update) the load-step Lambda
+aws-lambda-load-deploy: aws-lambda-load-package
+    aws lambda create-function \
+        --function-name "data-lab-load-step" \
+        --runtime python3.12 \
+        --handler handler.handler \
+        --zip-file fileb://python/lambdas/load_step/function.zip \
+        --role "${LAMBDA_ROLE_ARN}" \
+        --environment "Variables={DATA_LAB_S3_BUCKET=$DATA_LAB_S3_BUCKET,POSTGRES_HOST=$POSTGRES_HOST,POSTGRES_PORT=$POSTGRES_PORT,POSTGRES_USER=$POSTGRES_USER,POSTGRES_PASSWORD=$POSTGRES_PASSWORD,POSTGRES_DB=$POSTGRES_DB,SNOWFLAKE_ACCOUNT=$SNOWFLAKE_ACCOUNT,SNOWFLAKE_USER=$SNOWFLAKE_USER,SNOWFLAKE_PASSWORD=$SNOWFLAKE_PASSWORD,SNOWFLAKE_WAREHOUSE=$SNOWFLAKE_WAREHOUSE,SNOWFLAKE_DATABASE=$SNOWFLAKE_DATABASE,SNOWFLAKE_SCHEMA=$SNOWFLAKE_SCHEMA,SNOWFLAKE_ROLE=$SNOWFLAKE_ROLE,AWS_REGION=$AWS_REGION}" \
+        2>/dev/null || \
+    aws lambda update-function-code \
+        --function-name "data-lab-load-step" \
+        --zip-file fileb://python/lambdas/load_step/function.zip
+
+# Deploy both pipeline Lambdas and the state machine
+aws-pipeline-deploy: aws-lambda-export-deploy aws-lambda-load-deploy aws-sfn-deploy
+
+# Deploy (create or update) the Step Functions state machine
+aws-sfn-deploy:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+    REGION=${AWS_REGION:-us-east-1}
+    ARN="arn:aws:states:${REGION}:${ACCOUNT}:stateMachine:data-lab-pipeline"
+    aws stepfunctions create-state-machine \
+        --name "data-lab-pipeline" \
+        --definition file://infra/state_machines/pipeline.asl.json \
+        --role-arn "${SFN_ROLE_ARN}" \
+        --type STANDARD \
+        2>/dev/null || \
+    aws stepfunctions update-state-machine \
+        --state-machine-arn "${ARN}" \
+        --definition file://infra/state_machines/pipeline.asl.json
+    echo "State machine: ${ARN}"
+
+# Start a pipeline execution
+aws-sfn-start:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+    REGION=${AWS_REGION:-us-east-1}
+    ARN="arn:aws:states:${REGION}:${ACCOUNT}:stateMachine:data-lab-pipeline"
+    aws stepfunctions start-execution \
+        --state-machine-arn "${ARN}" \
+        --name "run-$(date +%Y%m%d-%H%M%S)"
+
+# List the 5 most recent pipeline executions
+aws-sfn-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+    REGION=${AWS_REGION:-us-east-1}
+    ARN="arn:aws:states:${REGION}:${ACCOUNT}:stateMachine:data-lab-pipeline"
+    aws stepfunctions list-executions \
+        --state-machine-arn "${ARN}" \
+        --max-results 5
+
+# ── UI ────────────────────────────────────────────────────
+
+# Install UI dependencies
+ui-install:
+    cd ui && npm install
+
+# Start the Next.js dev server (http://localhost:3000)
+ui-dev:
+    cd ui && npm run dev
+
+# Production build
+ui-build:
+    cd ui && npm run build
+
+# Type-check the UI
+ui-typecheck:
+    cd ui && npm run typecheck
+
 # ── Seed data ─────────────────────────────────────────────
 
 # Generate and load XMOB seed data into local Postgres

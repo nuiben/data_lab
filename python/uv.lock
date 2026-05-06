@@ -74,6 +74,9 @@ lambda = [
 s3 = [
     { name = "mypy-boto3-s3" },
 ]
+stepfunctions = [
+    { name = "mypy-boto3-stepfunctions" },
+]
 
 [[package]]
 name = "botocore"
@@ -413,7 +416,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "boto3-stubs", extra = ["events", "lambda", "s3"] },
+    { name = "boto3-stubs", extra = ["events", "lambda", "s3", "stepfunctions"] },
     { name = "ipykernel" },
     { name = "mypy" },
     { name = "pytest" },
@@ -424,7 +427,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.34" },
-    { name = "boto3-stubs", extras = ["s3", "lambda", "events"], marker = "extra == 'dev'" },
+    { name = "boto3-stubs", extras = ["s3", "lambda", "events", "stepfunctions"], marker = "extra == 'dev'" },
     { name = "botocore", specifier = ">=1.34" },
     { name = "faker", specifier = ">=40.15.0" },
     { name = "ipykernel", marker = "extra == 'dev'" },
@@ -766,6 +769,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/3e/5e/026461fef8e163ec261df1668ee88611124170bb4da3d1b144c970e7c9b4/mypy_boto3_s3-1.42.85.tar.gz", hash = "sha256:401e3a184ac0973bc08b556cc3b2655d8f2e56570b6ed87ce635210df4f666fb", size = 76543, upload-time = "2026-04-07T19:51:20.608Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c0/58/fb6373ca66898620ecb7b9ab92563f3f7277627994bc4ceba75c721de4a1/mypy_boto3_s3-1.42.85-py3-none-any.whl", hash = "sha256:b2cad995ea733b16ae3be5510fd6a0038aa44400c22d010d4def9286cf6eaf82", size = 83751, upload-time = "2026-04-07T19:51:17.727Z" },
+]
+
+[[package]]
+name = "mypy-boto3-stepfunctions"
+version = "1.42.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/71/ae530f15c4e4c4ef530e1ebaf6729aee2374e72ee8b425fb262884007157/mypy_boto3_stepfunctions-1.42.3.tar.gz", hash = "sha256:bf38f9db42e144e86c7807dff127554defe1548a10ba25824f69cc74554fa5b5", size = 31247, upload-time = "2025-12-04T21:13:53.532Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/a3/628e4ca004c1da011d425bc2b9399654b60ea84cff8d1137913379fef9e5/mypy_boto3_stepfunctions-1.42.3-py3-none-any.whl", hash = "sha256:1509c58b38389b05d0664e042e66508ea7cb170948cd92c33abe531e933f3c63", size = 36251, upload-time = "2025-12-04T21:13:50.217Z" },
 ]
 
 [[package]]

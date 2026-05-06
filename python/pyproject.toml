@@ -27,7 +27,7 @@ dev = [
     "pytest-cov",
     "ruff>=0.4",
     "mypy>=1.10",
-    "boto3-stubs[s3,lambda,events]",
+    "boto3-stubs[s3,lambda,events,stepfunctions]",
     "ipykernel",
 ]
 
