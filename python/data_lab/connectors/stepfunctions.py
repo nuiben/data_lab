@@ -19,11 +19,13 @@ if TYPE_CHECKING:
 log = structlog.get_logger(__name__)
 
 
-def get_client() -> "SFNClient":
+def get_client() -> SFNClient:
     return boto3.client("stepfunctions", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 
-def start_execution(state_machine_arn: str, name: str, input_data: dict[str, object] | None = None) -> str:
+def start_execution(
+    state_machine_arn: str, name: str, input_data: dict[str, object] | None = None
+) -> str:
     """Start a state machine execution and return the execution ARN."""
     client = get_client()
     resp = client.start_execution(
