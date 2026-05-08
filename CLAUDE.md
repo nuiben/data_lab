@@ -65,8 +65,10 @@ These are intentionally baked into the seed data. They affect how you write quer
 Project agents are in `.claude/agents/`. They are specialists — delegate to them when their domain is relevant:
 
 - **derek** — dbt model review, SQL quality, pipeline architecture
-- **carla** — data quality, RUS business line, XMOB-specific anomalies  
+- **carla** — data quality, RUS business line, XMOB-specific anomalies
 - **jenna** — scoping, prioritization, stakeholder framing
+- **jim** — financial controls, settlement reconciliation, revenue recognition, audit trail
+- **carl** — FP&A: monthly P&L, volume/fee-rate analysis, earnings reporting
 - **dbt-reviewer** — systematic dbt checklist (structure, tests, docs, cross-adapter safety)
 - **pipeline-debug** — diagnosing failures in seed/export/load/dbt
 
