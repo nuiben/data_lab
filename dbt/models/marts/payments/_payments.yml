@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: fct_transactions
+    description: "Settled and pending transactions enriched with merchant, account, and MCC context. All timestamps are UTC."
+    columns:
+      - name: transaction_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: amount
+        tests: [not_null]
+      - name: transacted_at
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['settled', 'pending', 'failed', 'reversed']
+
+  - name: fct_settlements
+    description: "Settlement batches enriched with merchant context, settlement lag, and derived fee_rate."
+    columns:
+      - name: settlement_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: net_amount
+        tests: [not_null]
+
+  - name: dim_merchant
+    description: "Merchant dimension with lifetime settled-transaction stats aggregated from fct_transactions sources."
+    columns:
+      - name: merchant_id
+        tests: [unique, not_null]
+      - name: dba_name
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['active', 'inactive', 'suspended']
+      - name: total_transactions
+        tests: [not_null]
+      - name: total_txn_volume
+        tests: [not_null]

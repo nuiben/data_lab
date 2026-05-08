@@ -1,0 +1,129 @@
+version: 2
+
+sources:
+  - name: fintech_raw
+    description: "Raw XMOB tables loaded by the export/load pipeline (Postgres → S3 → Snowflake)."
+    database: DATA_LAB
+    schema: PUBLIC
+    loaded_at_field: CREATED_AT
+    freshness:
+      warn_after: {count: 25, period: hour}
+      error_after: {count: 49, period: hour}
+
+    tables:
+      - name: TXN
+        description: >
+          Payment transactions from PaymentCore and AcquireNet.
+          ⚠️ AcquireNet timestamps are Eastern time; PaymentCore is UTC.
+          Timezone normalization happens in stg_txn.
+        columns:
+          - name: TRANSACTION_ID
+            tests: [unique, not_null]
+          - name: ACCOUNT_ID
+            tests: [not_null]
+          - name: AMOUNT
+            tests: [not_null]
+          - name: STATUS
+            tests:
+              - accepted_values:
+                  values: ['SETTLED', 'PENDING', 'FAILED', 'REVERSED']
+          - name: SOURCE_SYSTEM
+            tests:
+              - accepted_values:
+                  values: ['PaymentCore', 'AcquireNet']
+
+      - name: MERCHANT
+        columns:
+          - name: MERCHANT_ID
+            tests: [unique, not_null]
+          - name: STATUS
+            tests:
+              - accepted_values:
+                  values: ['ACTIVE', 'INACTIVE', 'SUSPENDED']
+
+      - name: ACCOUNT
+        columns:
+          - name: ACCOUNT_ID
+            tests: [unique, not_null]
+          - name: ACCOUNT_TYPE
+            tests:
+              - accepted_values:
+                  values: ['CHECKING', 'SAVINGS', 'CREDIT', 'FLEET']
+
+      - name: SETTLEMENT
+        columns:
+          - name: SETTLEMENT_ID
+            tests: [unique, not_null]
+          - name: ACCOUNT_ID
+            tests: [not_null]
+
+      - name: DISPUTE
+        columns:
+          - name: DISPUTE_ID
+            tests: [unique, not_null]
+          - name: TRANSACTION_ID
+            tests: [not_null]
+          - name: DISPUTE_TYPE
+            tests:
+              - accepted_values:
+                  values: ['FRAUD', 'UNRECOGNIZED', 'SERVICE', 'DUPLICATE']
+
+      - name: FLEET_CUSTOMER
+        description: >
+          Fleet and commercial card customers (FCC line).
+          ⚠️ CUSTOMER_ID has ~12% collision with P&S ACCOUNT.CUSTOMER_ID —
+          no canonical cross-line mapping exists yet.
+        columns:
+          - name: CUSTOMER_ID
+            tests: [unique, not_null]
+
+      - name: CARD
+        columns:
+          - name: CARD_ID
+            tests: [unique, not_null]
+          - name: CUSTOMER_ID
+            tests: [not_null]
+
+      - name: UNDERWRITING_DECISION
+        description: >
+          M-Score underwriting decisions.
+          ⚠️ ~8% of records still use MODEL_ID='M-SCORE-V2'.
+          Flag these for Carla (Risk) — v2 score scale differs from v4.
+        columns:
+          - name: DECISION_ID
+            tests: [unique, not_null]
+          - name: OUTCOME
+            tests:
+              - accepted_values:
+                  values: ['APPROVED', 'DECLINED', 'REVIEW']
+
+      - name: RISK_SCORE
+        columns:
+          - name: SCORE_ID
+            tests: [unique, not_null]
+
+      - name: MCC_CODE
+        description: "MCC reference. FCC maintains an override table — see HAS_OVERRIDE flag."
+        columns:
+          - name: MCC
+            tests: [unique, not_null]
+
+      - name: GEOGRAPHY
+        columns:
+          - name: ZIP_CODE
+            tests: [unique, not_null]
+
+      - name: PARTNER
+        columns:
+          - name: PARTNER_ID
+            tests: [unique, not_null]
+
+      - name: INDUSTRY_SEGMENT
+        columns:
+          - name: SEGMENT_CODE
+            tests: [unique, not_null]
+
+      - name: MODEL_VERSION
+        columns:
+          - name: MODEL_ID
+            tests: [unique, not_null]

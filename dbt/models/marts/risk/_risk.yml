@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: fct_underwriting_decisions
+    description: "Underwriting decisions enriched with model version and entity context. is_legacy_model flags M-Score v2 rows whose score scale differs from v4."
+    columns:
+      - name: decision_id
+        tests: [unique, not_null]
+      - name: is_legacy_model
+        tests: [not_null]
+      - name: outcome
+        tests:
+          - accepted_values:
+              values: ['approved', 'declined', 'review']
+      - name: risk_band
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'very_high']
+
+  - name: dim_model_performance
+    description: >
+      Monthly approval rates and score distributions by model version.
+      Primary use: track the M-Score v2→v4 migration impact on approval_rate.
+      Filter is_legacy_model = true to isolate v2 behaviour.
+    columns:
+      - name: decision_month
+        tests: [not_null]
+      - name: model_id
+        tests: [not_null]
+      - name: total_decisions
+        tests: [not_null]
+      - name: approval_rate
+        tests: [not_null]

@@ -1,0 +1,109 @@
+version: 2
+
+models:
+  - name: stg_txn
+    description: "Transactions with UTC-normalized timestamps and lowercased enum values."
+    columns:
+      - name: transaction_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: amount
+        tests: [not_null]
+      - name: transacted_at
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['settled', 'pending', 'failed', 'reversed']
+      - name: source_system
+        tests:
+          - accepted_values:
+              values: ['paymentcore', 'acquirenet']
+
+  - name: stg_merchant
+    columns:
+      - name: merchant_id
+        tests: [unique, not_null]
+      - name: dba_name
+        description: "Falls back to company_name when dba_name is null."
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['active', 'inactive', 'suspended']
+
+  - name: stg_account
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: account_type
+        tests:
+          - accepted_values:
+              values: ['checking', 'savings', 'credit', 'fleet']
+
+  - name: stg_settlement
+    columns:
+      - name: settlement_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: settlement_lag_days
+        tests: [not_null]
+
+  - name: stg_dispute
+    columns:
+      - name: dispute_id
+        tests: [unique, not_null]
+      - name: transaction_id
+        tests: [not_null]
+      - name: dispute_type
+        tests:
+          - accepted_values:
+              values: ['fraud', 'unrecognized', 'service', 'duplicate']
+
+  - name: stg_fleet_customer
+    description: >
+      Fleet customers. ⚠️ customer_id has ~12% overlap with P&S
+      account.customer_id — no canonical cross-line mapping exists.
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+
+  - name: stg_card
+    columns:
+      - name: card_id
+        tests: [unique, not_null]
+      - name: customer_id
+        tests: [not_null]
+
+  - name: stg_underwriting_decision
+    columns:
+      - name: decision_id
+        tests: [unique, not_null]
+      - name: is_legacy_model
+        description: "True when model_id = 'M-SCORE-V2'. Score scale differs from v4."
+        tests: [not_null]
+      - name: outcome
+        tests:
+          - accepted_values:
+              values: ['approved', 'declined', 'review']
+
+  - name: stg_risk_score
+    columns:
+      - name: score_id
+        tests: [unique, not_null]
+      - name: risk_band
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'very_high']
+
+  - name: stg_mcc_code
+    columns:
+      - name: mcc
+        tests: [unique, not_null]
+
+  - name: stg_geography
+    columns:
+      - name: zip_code
+        tests: [unique, not_null]

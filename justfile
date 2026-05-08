@@ -261,6 +261,40 @@ db-migrate:
             -d "${POSTGRES_DB:-data_lab}" < "$f"
     done
 
+# ── dbt ───────────────────────────────────────────────────
+
+# Install dbt-snowflake and fetch dbt packages (dbt_utils etc.)
+dbt-install:
+    pip install -r dbt/requirements.txt
+    cd dbt && dbt deps
+
+# Compile all models to SQL (no warehouse connection needed)
+dbt-compile:
+    cd dbt && dbt compile
+
+# Run all dbt models against the active profile target
+dbt-run:
+    cd dbt && dbt run
+
+# Run a specific model or selector  (e.g. just dbt-run-select "stg_txn+")
+dbt-run-select select:
+    cd dbt && dbt run --select {{select}}
+
+# Run all dbt schema + data tests
+dbt-test:
+    cd dbt && dbt test
+
+# Check source freshness against the loaded Snowflake tables
+dbt-freshness:
+    cd dbt && dbt source freshness
+
+# Generate docs and serve locally at http://localhost:8080
+dbt-docs:
+    cd dbt && dbt docs generate && dbt docs serve
+
+# Full transform cycle: run all models then test
+dbt-full: dbt-run dbt-test
+
 # ── Utilities ─────────────────────────────────────────────
 
 # Wire up .githooks so git uses the committed hooks

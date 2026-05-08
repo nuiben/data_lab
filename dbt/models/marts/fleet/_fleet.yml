@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: fct_card_transactions
+    description: "Fleet card transactions joined with card holder, fleet customer, and MCC context."
+    columns:
+      - name: transaction_id
+        tests: [unique, not_null]
+      - name: card_id
+        tests: [not_null]
+
+  - name: dim_fleet_customer
+    description: "Fleet customer dimension with card counts and lifetime settled spend metrics."
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+      - name: company_name
+        tests: [not_null]
+      - name: total_cards
+        tests: [not_null]
+      - name: active_cards
+        tests: [not_null]
+      - name: total_transactions
+        tests: [not_null]
+      - name: total_spend
+        tests: [not_null]

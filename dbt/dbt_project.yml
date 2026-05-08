@@ -1,0 +1,30 @@
+name: 'xmob'
+version: '1.0.0'
+config-version: 2
+
+profile: 'xmob'
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  xmob:
+    staging:
+      +schema: staging
+      +materialized: view
+      +tags: ['staging']
+    marts:
+      +schema: marts
+      +materialized: table
+      +tags: ['marts']
+      payments:
+        +tags: ['payments']
+      fleet:
+        +tags: ['fleet']
+      risk:
+        +tags: ['risk']

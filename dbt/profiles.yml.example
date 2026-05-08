@@ -1,0 +1,30 @@
+# Copy to ~/.dbt/profiles.yml and fill in your credentials.
+# Never commit profiles.yml — it contains secrets.
+#
+# Schemas produced:
+#   dev:  dbt_<USER>_staging, dbt_<USER>_marts  (safe sandbox per developer)
+#   prod: staging, marts
+xmob:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SYSADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'DATA_LAB') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
+      schema: "dbt_{{ env_var('USER', 'dev') }}"
+      threads: 4
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SYSADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'DATA_LAB') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
+      schema: public
+      threads: 8
