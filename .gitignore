@@ -34,3 +34,15 @@ Thumbs.db
 
 # ── Docker ────────────────────────────────────────────────
 pgadmin_data/
+
+# ── Node / UI ─────────────────────────────────────────────
+ui/node_modules/
+ui/.next/
+
+# ── dbt ───────────────────────────────────────────────────
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/profiles.yml
+data/local.duckdb
+data/local.duckdb.wal
